@@ -84,8 +84,8 @@ all: main-build
 main-build: DropTunerPedal.elf secondary-outputs
 
 # Tool invocations
-DropTunerPedal.elf DropTunerPedal.map: $(OBJS) $(USER_OBJS) C:\Users\martin\STM32CubeIDE\workspace_1.16.1\PitchShiftPedal\test5\STM32H723VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "DropTunerPedal.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\martin\STM32CubeIDE\workspace_1.16.1\PitchShiftPedal\test5\STM32H723VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="DropTunerPedal.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+DropTunerPedal.elf DropTunerPedal.map: $(OBJS) $(USER_OBJS) C:\Users\martin\STM32CubeIDE\workspace_1.16.1\DropTunerPedal\test5\STM32H723VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "DropTunerPedal.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\martin\STM32CubeIDE\workspace_1.16.1\DropTunerPedal\test5\STM32H723VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="DropTunerPedal.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

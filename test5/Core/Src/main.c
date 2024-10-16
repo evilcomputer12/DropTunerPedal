@@ -30,14 +30,14 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define N 4096
+#define N 3500
 #define halfN N/2
 
 #define BufSize N
 
 int Buf[BufSize];
 
-#define Overlap 100
+#define Overlap 350
 
 int WtrP;
 float Rd_P;
@@ -47,7 +47,7 @@ float a0, a1, a2, b1, b2, hp_in_z1, hp_in_z2, hp_out_z1, hp_out_z2;
 
 #define MAX_DOWN_SHIFT 12
 
-uint32_t semitoneShift = 2;
+uint32_t semitoneShift = 0;
 
 /* USER CODE END PD */
 
@@ -111,7 +111,7 @@ int main(void)
   /* USER CODE BEGIN SysInit */
   WtrP = 0;
   Rd_P = 0.0f;
-  Shift = 1.4f;  // Pitch shift amount (adjust as needed)
+  Shift = 0.0f;  // Pitch shift amount (adjust as needed)
   CrossFade = 1.0f;
   /* USER CODE END SysInit */
 
