@@ -81,6 +81,71 @@ static void MX_TIM6_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
+// Function to control LEDs based on semitone value
+void ControlLEDs(uint16_t semitone)
+{
+    // Turn off all LEDs before setting new ones
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15 | GPIO_PIN_14, GPIO_PIN_RESET); // LED8 and LED7
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13, GPIO_PIN_RESET); // LED6-LED1
+
+    switch (semitone)
+    {
+        case 7:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET); // Light up LED1 (semitone 0)
+            break;
+        case 6:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET); // Light up LED2 (semitone 1)
+            break;
+        case 5:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET); // Light up LED3 (semitone 2)
+            break;
+        case 4:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET); // Light up LED4 (semitone 3)
+            break;
+        case 3:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET);  // Light up LED5 (semitone 4)
+            break;
+        case 2:
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET);  // Light up LED6 (semitone 5)
+            break;
+        case 1:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET); // Light up LED7 (semitone 6)
+            break;
+        case 0:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); // Light up LED8 (semitone 7)
+            break;
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);   // Light up LED6 (for semitones 8-12)
+            // Light up corresponding LED for semitone
+            switch (semitone)
+            {
+                case 8:
+                	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); // Light up LED1 (semitone 8)
+                    break;
+                case 9:
+                	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET); // Light up LED2 (semitone 9)
+                    break;
+                case 10:
+                	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET); // Light up LED3 (semitone 10)
+                    break;
+                case 11:
+                	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET); // Light up LED4 (semitone 11)
+                    break;
+                case 12:
+                	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);  // Light up LED5 (semitone 12)
+                    break;
+            }
+            break;
+        default:
+            // No action needed for invalid semitone values
+            break;
+    }
+}
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -135,7 +200,23 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+  // Enable clocks for GPIO ports B, D, and A
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  // Configure GPIO pin outputs for LED8 (PB15) and LED7 (PB14)
+  GPIO_InitStruct.Pin = GPIO_PIN_15 | GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;   // Push-pull output
+  GPIO_InitStruct.Pull = GPIO_NOPULL;           // No pull-up or pull-down resistors
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;  // Set low frequency for LEDs
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);       // Initialize GPIOB
+
+  // Configure GPIO pin outputs for LED6 (PD8), LED5 (PD9), LED4 (PD10), LED3 (PD11), LED2 (PD12) , LED2 (PD13)
+  GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -168,6 +249,7 @@ int main(void)
   {
 
 	  semitoneShift = position;
+	  ControlLEDs(semitoneShift);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
