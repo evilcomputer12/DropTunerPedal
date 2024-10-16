@@ -63,6 +63,7 @@ DMA_HandleTypeDef hdma_adc3;
 DAC_HandleTypeDef hdac1;
 DMA_HandleTypeDef hdma_dac1_ch2;
 
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
@@ -77,12 +78,44 @@ static void MX_DMA_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define MAX_ENCODER_VALUE 65535
+#define DESIRED_MAX_VALUE 12
+#define SCALING_FACTOR ((MAX_ENCODER_VALUE + 1) / (DESIRED_MAX_VALUE + 1)) // Scaling factor for the range
+
+
+uint32_t counter = 0;
+int16_t count = 0;   // Use signed 16-bit int to handle possible negative values
+uint16_t position = 0;
+int speed = 0;
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    counter = __HAL_TIM_GET_COUNTER(htim);  // Get the raw counter value
+
+    count = (int16_t)counter;  // Cast to signed int to handle negative values
+
+    // If count is negative, set it to zero
+    if (count < 0)
+    {
+        count = 0;
+    }
+
+    // Scale down count to position, divide by 4 to adjust for sensitivity
+    position = count / 4;
+
+    // Clamp the position to be within 0 to 12
+    if (position > 12)
+    {
+        position = 12;  // Ensure position does not exceed 12
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -121,16 +154,20 @@ int main(void)
   MX_ADC3_Init();
   MX_DAC1_Init();
   MX_TIM6_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_DMA(&hadc3, adc_buffer, N);
   HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, dac_buffer, N, DAC_ALIGN_12B_R);
   HAL_TIM_Base_Start(&htim6);
+  HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  semitoneShift = position;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -300,6 +337,55 @@ static void MX_DAC1_Init(void)
   /* USER CODE BEGIN DAC1_Init 2 */
 
   /* USER CODE END DAC1_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_FALLING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_FALLING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
