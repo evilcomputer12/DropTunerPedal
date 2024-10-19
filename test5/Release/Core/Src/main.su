@@ -1,0 +1,8 @@
+../Core/Src/main.c:85:6:ControlLEDs	8	static
+../Core/Src/main.c:163:6:HAL_TIM_IC_CaptureCallback	0	static
+../Core/Src/main.c:264:6:SystemClock_Config	120	static,ignoring_inline_asm
+../Core/Src/main.c:190:5:main	112	static,ignoring_inline_asm
+../Core/Src/main.c:551:10:Do_PitchShift	16	static
+../Core/Src/main.c:602:6:HAL_ADC_ConvHalfCpltCallback	24	static
+../Core/Src/main.c:609:6:HAL_ADC_ConvCpltCallback	24	static
+../Core/Src/main.c:635:6:Error_Handler	0	static,ignoring_inline_asm
