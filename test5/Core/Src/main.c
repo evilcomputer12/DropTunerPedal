@@ -21,6 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
+#include <stdbool.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -30,14 +33,14 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define N 3500
+#define N 3675
 #define halfN N/2
 
 #define BufSize N
 
 int Buf[BufSize];
 
-#define Overlap 350
+#define Overlap 2048
 
 int WtrP;
 float Rd_P;
@@ -60,8 +63,12 @@ uint32_t semitoneShift = 0;
 ADC_HandleTypeDef hadc3;
 DMA_HandleTypeDef hdma_adc3;
 
+CORDIC_HandleTypeDef hcordic;
+
 DAC_HandleTypeDef hdac1;
 DMA_HandleTypeDef hdma_dac1_ch2;
+
+FMAC_HandleTypeDef hfmac;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
@@ -79,6 +86,8 @@ static void MX_ADC3_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_CORDIC_Init(void);
+static void MX_FMAC_Init(void);
 /* USER CODE BEGIN PFP */
 
 // Function to control LEDs based on semitone value
@@ -194,6 +203,11 @@ int main(void)
 
   /* USER CODE END 1 */
 
+  /* Enable the CPU Cache */
+
+  /* Enable I-Cache---------------------------------------------------------*/
+  SCB_EnableICache();
+
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -236,6 +250,8 @@ int main(void)
   MX_DAC1_Init();
   MX_TIM6_Init();
   MX_TIM3_Init();
+  MX_CORDIC_Init();
+  MX_FMAC_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_DMA(&hadc3, adc_buffer, N);
   HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, dac_buffer, N, DAC_ALIGN_12B_R);
@@ -380,6 +396,32 @@ static void MX_ADC3_Init(void)
 }
 
 /**
+  * @brief CORDIC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CORDIC_Init(void)
+{
+
+  /* USER CODE BEGIN CORDIC_Init 0 */
+
+  /* USER CODE END CORDIC_Init 0 */
+
+  /* USER CODE BEGIN CORDIC_Init 1 */
+
+  /* USER CODE END CORDIC_Init 1 */
+  hcordic.Instance = CORDIC;
+  if (HAL_CORDIC_Init(&hcordic) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CORDIC_Init 2 */
+
+  /* USER CODE END CORDIC_Init 2 */
+
+}
+
+/**
   * @brief DAC1 Initialization Function
   * @param None
   * @retval None
@@ -419,6 +461,32 @@ static void MX_DAC1_Init(void)
   /* USER CODE BEGIN DAC1_Init 2 */
 
   /* USER CODE END DAC1_Init 2 */
+
+}
+
+/**
+  * @brief FMAC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FMAC_Init(void)
+{
+
+  /* USER CODE BEGIN FMAC_Init 0 */
+
+  /* USER CODE END FMAC_Init 0 */
+
+  /* USER CODE BEGIN FMAC_Init 1 */
+
+  /* USER CODE END FMAC_Init 1 */
+  hfmac.Instance = FMAC;
+  if (HAL_FMAC_Init(&hfmac) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FMAC_Init 2 */
+
+  /* USER CODE END FMAC_Init 2 */
 
 }
 
@@ -491,8 +559,8 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 0;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 2865;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim6.Init.Period = 6237;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
@@ -548,17 +616,63 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 // Pitch shifting function (downward only)
+
+float pitchShiftRatios[13] = {
+        1.0f,             // 0 semitone shift
+        0.943874f,        // 1 semitone shift
+        0.890899f,        // 2 semitone shift
+        0.840896f,        // 3 semitone shift
+        0.793701f,        // 4 semitone shift
+        0.749154f,        // 5 semitone shift
+        0.707107f,        // 6 semitone shift
+        0.667420f,        // 7 semitone shift
+        0.629961f,        // 8 semitone shift
+        0.594604f,        // 9 semitone shift
+        0.561231f,        // 10 semitone shift
+        0.529732f,        // 11 semitone shift
+        0.500000f         // 12 semitone shift
+    };
+
+/* USER CODE BEGIN 4 */
+// Pitch shifting function (downward only)
+
+
+// Cubic interpolation function
+float cubicInterpolate(float y0, float y1, float y2, float y3, float mu) {
+    float a0, a1, a2, a3, mu2;
+
+    mu2 = mu * mu;
+    a0 = y3 - y2 - y0 + y1;
+    a1 = y0 - y1 - a0;
+    a2 = y2 - y0;
+    a3 = y1;
+
+    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3);
+}
+
+// Sine-based smooth crossfade function
+float sineCrossfade(float x) {
+    return 0.5f * (1.0f - cosf(x * M_PI));  // Smoother transition using cosine
+}
+
+// IIR filter coefficients (adjust for the desired cutoff frequency)
+float a1 = 0.8f;  // Feedback coefficient
+float b0 = 0.2f;  // Feedforward coefficient
+
+// Previous output sample for the IIR filter (initially set to 0)
+float previousOutput = 0.0f;
+
 uint32_t Do_PitchShift(uint32_t sample) {
     // Write the original sample to the ring buffer
     Buf[WtrP] = sample;
 
-    // Ensure semitoneShift is within the valid range (0 to MAX_DOWN_SHIFT)
+    // Ensure semitoneShift is within the valid range
     if (semitoneShift > MAX_DOWN_SHIFT) {
         semitoneShift = MAX_DOWN_SHIFT;
     }
 
-    // Calculate the pitch shift ratio based on downward semitone shift
-    float pitchShiftRatio = powf(2.0f, -(float)semitoneShift / 12.0f); // Only downshift
+    // Calculate the pitch shift ratio (downward shift only)
+    float pitchShiftRatio = powf(2.0f, -(float)semitoneShift / 12.0f);
 
     // Update the read pointer based on the pitch shift ratio
     Rd_P += pitchShiftRatio;
@@ -566,31 +680,64 @@ uint32_t Do_PitchShift(uint32_t sample) {
     // Clamp the read pointer to prevent overflow
     if (Rd_P >= BufSize) Rd_P -= BufSize;
 
-    // Compute integer read pointers for pitch-shifting (0° and 180° phases)
-    int RdPtr_Int = (int)Rd_P % BufSize;             // Main read pointer
-    int RdPtr_Int2 = (RdPtr_Int + (BufSize / 2)) % BufSize; // 180° phase pointer
+    // Compute integer read pointers (main phase and 180° phase)
+    int RdPtr_Int = (int)Rd_P % BufSize;               // Main read pointer
+    int RdPtr_Int2 = (RdPtr_Int + (BufSize / 2)) % BufSize;  // 180° phase pointer
 
-    // Read the two samples from the buffer
-    float Rd0 = (float)Buf[RdPtr_Int];
-    float Rd1 = (float)Buf[RdPtr_Int2];
+    // Extract the fractional part of the read pointer for interpolation
+    float frac = Rd_P - (float)RdPtr_Int;
 
-    // Cross-fade between two read pointers if overlap occurs
+    // Get the four samples needed for cubic interpolation
+    int RdPtr_Int_M1 = (RdPtr_Int - 1 + BufSize) % BufSize;  // Previous sample (wrap around buffer)
+    int RdPtr_Int_P1 = (RdPtr_Int + 1) % BufSize;            // Next sample
+    int RdPtr_Int_P2 = (RdPtr_Int + 2) % BufSize;            // Next next sample
+
+    // Cubic interpolation for the main phase
+    float Rd0 = cubicInterpolate(
+        (float)Buf[RdPtr_Int_M1],
+        (float)Buf[RdPtr_Int],
+        (float)Buf[RdPtr_Int_P1],
+        (float)Buf[RdPtr_Int_P2],
+        frac
+    );
+
+    // Repeat the same for the 180° phase shift (cross-phase)
+    int RdPtr_Int2_M1 = (RdPtr_Int2 - 1 + BufSize) % BufSize;
+    int RdPtr_Int2_P1 = (RdPtr_Int2 + 1) % BufSize;
+    int RdPtr_Int2_P2 = (RdPtr_Int2 + 2) % BufSize;
+
+    float Rd1 = cubicInterpolate(
+        (float)Buf[RdPtr_Int2_M1],
+        (float)Buf[RdPtr_Int2],
+        (float)Buf[RdPtr_Int2_P1],
+        (float)Buf[RdPtr_Int2_P2],
+        frac
+    );
+
+    // Crossfade logic using overlap and sine-based crossfade
     if (Overlap >= (WtrP - RdPtr_Int) && (WtrP - RdPtr_Int) >= 0 && Shift != 1.0f) {
         int rel = WtrP - RdPtr_Int;
-        CrossFade = ((float)rel) / (float)Overlap;
+        CrossFade = sineCrossfade((float)rel / (float)Overlap);
     } else if (WtrP - RdPtr_Int == 0) {
         CrossFade = 0.0f;
     }
 
     if (Overlap >= (WtrP - RdPtr_Int2) && (WtrP - RdPtr_Int2) >= 0 && Shift != 1.0f) {
         int rel = WtrP - RdPtr_Int2;
-        CrossFade = 1.0f - ((float)rel) / (float)Overlap;
+        CrossFade = 1.0f - sineCrossfade((float)rel / (float)Overlap);
     } else if (WtrP - RdPtr_Int2 == 0) {
         CrossFade = 1.0f;
     }
 
-    // Perform cross-fading and combine the two read samples
-    sample = (uint32_t)(Rd0 * CrossFade + Rd1 * (1.0f - CrossFade));
+    // Perform cross-fading and combine the two phase-shifted samples
+    float combinedSample = Rd0 * CrossFade + Rd1 * (1.0f - CrossFade);
+
+    // Apply IIR filter to smooth the output
+    float filteredSample = b0 * combinedSample + a1 * previousOutput;
+    previousOutput = filteredSample;  // Store the filtered output for the next iteration
+
+    // Convert the filtered sample back to integer for output
+    sample = (uint32_t)filteredSample;
 
     // Increment the write pointer and handle wrap-around
     WtrP++;
@@ -598,6 +745,7 @@ uint32_t Do_PitchShift(uint32_t sample) {
 
     return sample;
 }
+
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	for(int n = 0; n < halfN; n++)
@@ -612,20 +760,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		dac_buffer[n] =  Do_PitchShift(adc_buffer[n]);
 	}
 }
-
-//void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
-//	for(int n = 0; n < halfN; n++)
-//	{
-//		dac_buffer[n] = adc_buffer[n];
-//	}
-//}
-//
-//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-//	for(int n = halfN; n < N; n++)
-//	{
-//		dac_buffer[n] = adc_buffer[n];
-//	}
-//}
 /* USER CODE END 4 */
 
 /**
